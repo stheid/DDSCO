@@ -99,8 +99,8 @@ class Controller:
         src, to = self.agents[src], self.agents[to]
         dist = np.linalg.norm(src.pos - to.pos)
 
-        # linear function with maximum at .8C and minimum at 1.5C (thats the zero position, but its actually clipped)
-        return np.random.uniform() < np.clip((1.5 - dist / C) / .7, .001, 1), dist
+        # linear function with maximum at .4C and minimum at 1.5C (thats the zero position, but its actually clipped)
+        return np.random.uniform() < np.clip((1.5 - dist / C) / 1.1, .001, 1), dist
 
 
 if __name__ == '__main__':
@@ -120,6 +120,6 @@ if __name__ == '__main__':
         return ax,
 
 
-    ani = FuncAnimation(fig, animate, 5000, interval=10, repeat=False)
-    ani.save("out.mp4")
-    # plt.show()
+    ani = FuncAnimation(fig, animate, 2000, interval=10, repeat=False)
+    # ani.save("out.mp4")
+    plt.show()

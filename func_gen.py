@@ -1,5 +1,5 @@
 import torch
-from torch.distributions import uniform
+from torch.distributions import normal
 
 
 def objective(n):
@@ -12,7 +12,7 @@ def objective(n):
 
     def f(x):
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
-        pdf = uniform.Uniform(torch.DoubleTensor([-1.]), torch.DoubleTensor([1.]))
+        pdf = normal.Normal(torch.DoubleTensor([0.]), torch.DoubleTensor([1.]))
         noise = pdf.sample(torch.Size([n]))
 
         # split src vector into x and y
@@ -48,17 +48,12 @@ def penalty(n, i, C):
     def p(x):
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
 
-        g = torch.zeros(n)
-        for j in range(n):
-            if i == j:
-                continue
-
-            # all non-neighbours should also be at least C away
-            v = C - torch.norm(src[i * 2:i * 2 + 2] - src[j * 2:j * 2 + 2])
-            if abs(i - j) == 1:
+        g = torch.zeros(2)
+        for idx, j in enumerate([-1, 1]):
+            j = i + j
+            if 0 <= j < n:
                 # but neighbours should also not exceed C
-                v = torch.abs(v)
-            g[j] = v
+                g[idx] = torch.abs(C - torch.norm(src[i * 2:i * 2 + 2] - src[j * 2:j * 2 + 2]))
         loss = torch.relu(g).pow(2).sum()
 
         src.retain_grad()
