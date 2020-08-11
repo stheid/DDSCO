@@ -1,8 +1,6 @@
 import numpy as np
 import logging
-
-import torch
-from torch.distributions import uniform
+from func_gen import *
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -10,45 +8,15 @@ from matplotlib.animation import FuncAnimation
 
 matplotlib.use("TkAgg")
 plt.style.use('seaborn-whitegrid')
-C = 1
-
-
-def objective(n):
-    """
-
-    :param n: agents
-    :param terms: number of random quadratic functions
-    :return:
-    """
-
-    def f(x):
-        src = torch.tensor(x, dtype=torch.double, requires_grad=True)
-        x = src.reshape((-1, 2)).T
-        s = torch.tensor([1, -1], dtype=torch.double, requires_grad=True)
-
-        pdf = uniform.Uniform(torch.DoubleTensor([-1.]), torch.DoubleTensor([1.]))
-        noise = pdf.sample(torch.Size([n]))
-
-        y = x[1, :].reshape(-1, 1)
-        x = x[0, :].reshape(-1, 1)
-        x = torch.cat((torch.ones_like(x), noise, x), 1)
-        b = torch.inverse(x.T @ x) @ x.T @ y
-        y_ = x @ b
-        e = y - y_
-        loss = e.T @ e
-
-        src.retain_grad()
-        loss.backward()
-        return loss.detach().numpy(), src.grad.numpy()
-
-    return f
+C = .1
 
 
 def lr(i):
-    return (5e-3)
+    return (3e-3)
 
 
-beta = 1000
+def beta(i):
+    return 2 + i / 100
 logger = logging.getLogger(__name__)
 
 
@@ -62,6 +30,7 @@ class Agent:
         self.net = net
         # between 1 or 4 times delay
         self.clock = dict(delay=np.random.randint(1, 5), multiple=np.random.randint(1, 5))
+        self.pgrad = penalty(self.n, self.idx, C)
 
     @property
     def pos(self):
@@ -71,9 +40,6 @@ class Agent:
     def pos(self, val):
         self.x[self.xmask] = val
 
-    def pgrad(self, x):
-        return 0
-
     def is_tick(self, i):
         return (i - self.clock['delay']) % self.clock['multiple'] == 0
 
@@ -81,7 +47,7 @@ class Agent:
         if self.is_tick(i):
             # make gradient update
             logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.net.fgrad(self.x)[1])
-            self.pos -= lr(i) * (self.net.fgrad(self.x)[1][self.xmask] - beta * self.pgrad(self.x))
+            self.pos -= lr(i) * (self.net.fgrad(self.x)[1][self.xmask] + beta(i) * self.pgrad(self.x)[1][self.xmask])
 
             for i in [-1, 1]:
                 to = self.idx + i
@@ -150,10 +116,10 @@ if __name__ == '__main__':
             x = ctrl.step()
         print(x)
         ax.clear()
-        ax.scatter(x[0::2].tolist(), x[1::2].tolist())
+        ax.plot(x[0::2].tolist(), x[1::2].tolist(), ':o')
         return ax,
 
 
-    ani = FuncAnimation(fig, animate, 2000, interval=10, repeat=False)
-    # ani.save("out.mp4")
-    plt.show()
+    ani = FuncAnimation(fig, animate, 5000, interval=10, repeat=False)
+    ani.save("out.mp4")
+    # plt.show()
