@@ -22,19 +22,24 @@ def objective(n):
     """
 
     def f(x):
-        x = torch.tensor(x, dtype=torch.double, requires_grad=True)
+        src = torch.tensor(x, dtype=torch.double, requires_grad=True)
+        x = src.reshape((-1, 2)).T
         s = torch.tensor([1, -1], dtype=torch.double, requires_grad=True)
 
         pdf = uniform.Uniform(torch.DoubleTensor([-1.]), torch.DoubleTensor([1.]))
         noise = pdf.sample(torch.Size([n]))
 
-        # sum of squared difference of x and y per agent. therefore the agents should arrange on the line x=y
-        f = torch.pow(s @ x.reshape((-1, 2)).T, 2).sum()
-        # f = (torch.pow(s @x.reshape((-1, 2)).T, 2) + noise).sum()
+        y = x[1, :].reshape(-1, 1)
+        x = x[0, :].reshape(-1, 1)
+        x = torch.cat((torch.ones_like(x), noise, x), 1)
+        b = torch.inverse(x.T @ x) @ x.T @ y
+        y_ = x @ b
+        e = y - y_
+        loss = e.T @ e
 
-        x.retain_grad()
-        f.backward()
-        return f.detach().numpy(), x.grad.numpy()
+        src.retain_grad()
+        loss.backward()
+        return loss.detach().numpy(), src.grad.numpy()
 
     return f
 
@@ -75,7 +80,7 @@ class Agent:
     def step(self, i):
         if self.is_tick(i):
             # make gradient update
-            print(i, self.idx, self.net.fgrad(self.x)[1])
+            logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.net.fgrad(self.x)[1])
             self.pos -= lr(i) * (self.net.fgrad(self.x)[1][self.xmask] - beta * self.pgrad(self.x))
 
             for i in [-1, 1]:
@@ -149,6 +154,6 @@ if __name__ == '__main__':
         return ax,
 
 
-    ani = FuncAnimation(fig, animate, 1000, interval=100, repeat=False)
-    ani.save("out.mp4")
+    ani = FuncAnimation(fig, animate, 2000, interval=10, repeat=False)
+    # ani.save("out.mp4")
     plt.show()
