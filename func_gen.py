@@ -1,19 +1,38 @@
+from typing import Tuple
+import numpy as np
 import torch
 from torch.distributions import normal
 
 
-def objective(n):
-    """
+class Problem:
+    def __init__(self, n, ideal_dist):
+        self.n = n
+        self.ideal_dist = ideal_dist
 
-    :param n: agents
-    :param terms: number of random quadratic functions
-    :return:
-    """
+    def objective(self, x) -> Tuple[float, np.array]:
+        """
 
-    def f(x):
+        :param x: input value for the function
+        :return: value and nabla at x
+        """
+        pass
+
+    def penalty(self, i, x) -> Tuple[float, np.array]:
+        """
+        create penalties of the ith robot with n robots in total
+        :param i: ith robot
+        :param x: current value
+        :return: value and nabla at x
+        """
+        pass
+
+
+class LineProblem(Problem):
+
+    def objective(self, x):
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
         pdf = normal.Normal(torch.DoubleTensor([0.]), torch.DoubleTensor([1.]))
-        noise = pdf.sample(torch.Size([n]))
+        noise = pdf.sample(torch.Size([self.n]))
 
         # split src vector into x and y
         x, y = src.reshape((-1, 2)).unsqueeze(1).unbind(2)
@@ -34,35 +53,17 @@ def objective(n):
         loss.backward()
         return loss.detach().numpy(), src.grad.numpy()
 
-    return f
-
-
-def penalty(n, i, C):
-    """
-    create penalties of the ith robot with n robots in total
-    :param n: number of robots
-    :param i: ith robot
-    :return:
-    """
-
-    def p(x):
+    def penalty(self, x, i):
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
 
         g = torch.zeros(2)
         for idx, j in enumerate([-1, 1]):
             j = i + j
-            if 0 <= j < n:
+            if 0 <= j < self.n:
                 # but neighbours should also not exceed C
-                g[idx] = torch.abs(C - torch.norm(src[i * 2:i * 2 + 2] - src[j * 2:j * 2 + 2]))
+                g[idx] = torch.abs(self.ideal_dist - torch.norm(src[i * 2:i * 2 + 2] - src[j * 2:j * 2 + 2]))
         loss = torch.relu(g).pow(2).sum()
 
         src.retain_grad()
         loss.backward()
         return loss.detach().numpy(), src.grad.numpy()
-
-    return p
-
-
-if __name__ == '__main__':
-    p = penalty(3, 0, 1)
-    print(p([0, 0, 0, 1.5, 0, 2.5]))

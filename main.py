@@ -1,6 +1,9 @@
+from functools import partial
+
 import numpy as np
 import logging
 from func_gen import *
+import re
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -8,29 +11,21 @@ from matplotlib.animation import FuncAnimation
 
 matplotlib.use("TkAgg")
 plt.style.use('seaborn-whitegrid')
-C = .1
 
-
-def lr(i):
-    return (3e-3)
-
-
-def beta(i):
-    return 2 + i / 100
 logger = logging.getLogger(__name__)
 
 
 class Agent:
-    def __init__(self, idx, x0: np.array, net):
+    def __init__(self, idx, x0: np.array, ctl):
         self.x = x0
         self.idx = idx
         self.n = x0.shape[0] // 2
         self.xmask = [self.idx * 2, self.idx * 2 + 1]
         self.counters = np.zeros(self.n)
-        self.net = net
+        self.ctl = ctl
         # between 1 or 4 times delay
         self.clock = dict(delay=np.random.randint(1, 5), multiple=np.random.randint(1, 5))
-        self.pgrad = penalty(self.n, self.idx, C)
+        self.pgrad = partial(self.ctl.problem.penalty, i=self.idx)
 
     @property
     def pos(self):
@@ -46,13 +41,14 @@ class Agent:
     def step(self, i):
         if self.is_tick(i):
             # make gradient update
-            logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.net.fgrad(self.x)[1])
-            self.pos -= lr(i) * (self.net.fgrad(self.x)[1][self.xmask] + beta(i) * self.pgrad(self.x)[1][self.xmask])
-
+            logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.ctl.fgrad(self.x)[1])
+            self.pos -= self.ctl.lr * (
+                    self.ctl.fgrad(self.x)[1][self.xmask] + self.ctl.beta * self.pgrad(self.x)[1][self.xmask])
+            self.counters[self.idx] = i
             for i in [-1, 1]:
                 to = self.idx + i
                 if 0 <= to < self.n:
-                    self.net.send(self.idx, to, (self.counters, self.x))
+                    self.ctl.send(self.idx, to, (self.counters, self.x))
 
     def msg(self, data):
         cntrs, x = data
@@ -67,9 +63,11 @@ class Controller:
     Will take care of network transmission probability between the agents and log all messages
     """
 
-    def __init__(self, n):
+    def __init__(self, n, ideal_dist, problem):
         self.n = n
-        self.fgrad = objective(n)
+        self.ideal_dist = ideal_dist
+        self.problem = problem(n, self.ideal_dist)
+        self.fgrad = self.problem.objective
 
     def reset(self):
         x0 = np.random.uniform(size=2 * self.n)
@@ -100,14 +98,26 @@ class Controller:
         dist = np.linalg.norm(src.pos - to.pos)
 
         # linear function with maximum at .4C and minimum at 1.5C (thats the zero position, but its actually clipped)
-        return np.random.uniform() < np.clip((1.5 - dist / C) / 1.1, .001, 1), dist
+        return np.random.uniform() < np.clip((1.5 - dist / self.ideal_dist) / 1.1, .001, 1), dist
+
+    @property
+    def lr(self):
+        return (3e-3)
+
+    @property
+    def beta(self):
+        return 2 + self.i / 100
 
 
 if __name__ == '__main__':
-    ctrl = Controller(10)
+    ctrl = Controller(10, .1, LineProblem)
+
+    logging.basicConfig(level=logging.WARN)
 
     fig, ax = plt.subplots()
 
+
+    # ax.set_aspect('equal')
 
     def animate(i):
         if i == 0:
@@ -117,6 +127,8 @@ if __name__ == '__main__':
         print(x)
         ax.clear()
         ax.plot(x[0::2].tolist(), x[1::2].tolist(), ':o')
+        for agent in ctrl.agents:
+            ax.annotate(re.sub('\. *', ':', str(i - agent.counters)[1:-2]), agent.pos, fontsize=8)
         return ax,
 
 
