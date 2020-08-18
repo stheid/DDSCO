@@ -3,6 +3,9 @@ import numpy as np
 import torch
 from torch.distributions import normal
 
+torch.manual_seed(0);
+np.random.seed(0)
+
 
 class Problem:
     def __init__(self, n, ideal_dist):
@@ -28,7 +31,6 @@ class Problem:
 
 
 class LineProblem(Problem):
-
     def objective(self, x):
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
         pdf = normal.Normal(torch.DoubleTensor([0.]), torch.DoubleTensor([1.]))
@@ -54,6 +56,12 @@ class LineProblem(Problem):
         return loss.detach().numpy(), src.grad.numpy()
 
     def penalty(self, x, i):
+        """
+        distance to between neightbour must be a constant.
+        :param x:
+        :param i:
+        :return:
+        """
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
 
         g = torch.zeros(2)
@@ -62,6 +70,44 @@ class LineProblem(Problem):
             if 0 <= j < self.n:
                 # but neighbours should also not exceed C
                 g[idx] = torch.abs(self.ideal_dist - torch.norm(src[i * 2:i * 2 + 2] - src[j * 2:j * 2 + 2]))
+        loss = torch.relu(g).pow(2).sum()
+
+        src.retain_grad()
+        loss.backward()
+        return loss.detach().numpy(), src.grad.numpy()
+
+
+class CircleProblem(Problem):
+    def objective(self, x) -> Tuple[float, np.array]:
+        src = torch.tensor(x, dtype=torch.double, requires_grad=True)
+        x, y = src.reshape((-1, 2)).unsqueeze(1).unbind(2)
+
+        a = torch.zeros(self.n)
+        for i in range(self.n):
+            next = (i + 1) % self.n
+            a[i] = x[i] * y[next] - x[next] * y[i]
+        # maximize the sum of all terms
+        loss = -torch.abs(a.sum())
+
+        src.retain_grad()
+        loss.backward()
+        return loss.detach().numpy(), src.grad.numpy()
+
+    def penalty(self, x, i):
+        """
+        distance to between neightbour must be a constant. 0 and n-1 are also considered neighbours
+        :param x:
+        :param i:
+        :return:
+        """
+
+        src = torch.tensor(x, dtype=torch.double, requires_grad=True)
+
+        g = torch.zeros(2)
+        for idx, j in enumerate([-1, 1]):
+            j = (i + j) % self.n
+            # but neighbours should also not exceed C
+            g[idx] = torch.abs(self.ideal_dist - torch.norm(src[i * 2:i * 2 + 2] - src[j * 2:j * 2 + 2]))
         loss = torch.relu(g).pow(2).sum()
 
         src.retain_grad()

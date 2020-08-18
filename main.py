@@ -17,14 +17,14 @@ logger = logging.getLogger(__name__)
 
 class Agent:
     def __init__(self, idx, x0: np.array, ctl):
-        self.x = x0
+        self.x = x0.copy()
         self.idx = idx
         self.n = x0.shape[0] // 2
         self.xmask = [self.idx * 2, self.idx * 2 + 1]
         self.counters = np.zeros(self.n)
         self.ctl = ctl
         # between 1 or 4 times delay
-        self.clock = dict(delay=np.random.randint(1, 5), multiple=np.random.randint(1, 5))
+        self.clock = dict(delay=np.random.randint(3, 7), multiple=np.random.randint(3, 7))
         self.pgrad = partial(self.ctl.problem.penalty, i=self.idx)
 
     @property
@@ -41,9 +41,9 @@ class Agent:
     def step(self, i):
         if self.is_tick(i):
             # make gradient update
-            logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.ctl.fgrad(self.x)[1])
             self.pos -= self.ctl.lr * (
                     self.ctl.fgrad(self.x)[1][self.xmask] + self.ctl.beta * self.pgrad(self.x)[1][self.xmask])
+            logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.x)
             self.counters[self.idx] = i
             for i in [-1, 1]:
                 to = self.idx + i
@@ -63,11 +63,12 @@ class Controller:
     Will take care of network transmission probability between the agents and log all messages
     """
 
-    def __init__(self, n, ideal_dist, problem):
+    def __init__(self, n, ideal_dist, problem, link_quality=(.4, 1.5)):
         self.n = n
         self.ideal_dist = ideal_dist
         self.problem = problem(n, self.ideal_dist)
         self.fgrad = self.problem.objective
+        self.link_quality = link_quality
 
     def reset(self):
         x0 = np.random.uniform(size=2 * self.n)
@@ -98,7 +99,8 @@ class Controller:
         dist = np.linalg.norm(src.pos - to.pos)
 
         # linear function with maximum at .4C and minimum at 1.5C (thats the zero position, but its actually clipped)
-        return np.random.uniform() < np.clip((1.5 - dist / self.ideal_dist) / 1.1, .001, 1), dist
+        return np.random.uniform() < np.clip(
+            (self.link_quality[1] - dist / self.ideal_dist) / self.link_quality[1] - self.link_quality[0], .01, 1), dist
 
     @property
     def lr(self):
@@ -110,28 +112,30 @@ class Controller:
 
 
 if __name__ == '__main__':
-    ctrl = Controller(10, .1, LineProblem)
+    ctrl = Controller(10, .1, CircleProblem, link_quality=[0, 2])
 
     logging.basicConfig(level=logging.WARN)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.set_aspect('equal', 'box')
 
-
-    # ax.set_aspect('equal')
 
     def animate(i):
         if i == 0:
             x = ctrl.reset()
         else:
             x = ctrl.step()
-        print(x)
+        logger.info(x)
         ax.clear()
+        ax.set_title(ctrl.link_quality)
         ax.plot(x[0::2].tolist(), x[1::2].tolist(), ':o')
         for agent in ctrl.agents:
-            ax.annotate(re.sub('\. *', ':', str(i - agent.counters)[1:-2]), agent.pos, fontsize=8)
+            ax.annotate(':'.join([f'{int(c):d}' for c in i - agent.counters]), agent.pos, fontsize=8)
         return ax,
 
 
-    ani = FuncAnimation(fig, animate, 2000, interval=10, repeat=False)
-    # ani.save("out.mp4")
+    ani = FuncAnimation(fig, animate, 5000, interval=10, repeat=False)
+    # ani.save(f'circle{ctrl.link_quality}.mp4')
     plt.show()
+
+# ffmpeg -i circle\[0\,2\].mp4 -i circle\[0\,1.1\].mp4 -filter_complex hstack output.mp4
