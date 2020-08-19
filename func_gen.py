@@ -1,10 +1,11 @@
 from typing import Tuple
 import numpy as np
 import torch
+from matplotlib.patches import Circle
 from torch.distributions import normal
 
-torch.manual_seed(0);
-np.random.seed(0)
+torch.manual_seed(1)
+np.random.seed(1)
 
 
 class Problem:
@@ -29,9 +30,12 @@ class Problem:
         """
         pass
 
+    def draw(self, x, ax):
+        pass
+
 
 class LineProblem(Problem):
-    def objective(self, x):
+    def _reg(self, x, is_noisy=True):
         src = torch.tensor(x, dtype=torch.double, requires_grad=True)
         pdf = normal.Normal(torch.DoubleTensor([0.]), torch.DoubleTensor([1.]))
         noise = pdf.sample(torch.Size([self.n]))
@@ -39,9 +43,14 @@ class LineProblem(Problem):
         # split src vector into x and y
         x, y = src.reshape((-1, 2)).unsqueeze(1).unbind(2)
         # add noise and bias value
-        x = torch.cat((torch.ones_like(x), noise, x), 1)
+        cols = [torch.ones_like(x)] + ([noise] if is_noisy else []) + [x]
+        x = torch.cat(cols, 1)
         # solve OLS
         b = torch.inverse(x.T @ x) @ x.T @ y
+        return src, x, y, b
+
+    def objective(self, x):
+        src, x, y, b = self._reg(x)
         # estimate regressionline
         y_ = x @ b
         # calculate residual error
@@ -49,7 +58,7 @@ class LineProblem(Problem):
         # calculate dist between first and last
         d = torch.norm(src[:2] - src[-2:])
         # minimize error and maximize dist
-        loss = e.T @ e - d
+        loss = e.T @ e - d / self.n
 
         src.retain_grad()
         loss.backward()
@@ -75,6 +84,45 @@ class LineProblem(Problem):
         src.retain_grad()
         loss.backward()
         return loss.detach().numpy(), src.grad.numpy()
+
+    def draw(self, x, ax):
+        # only use b, convert to numpy, and discard the noise term
+        b = self._reg(x)[3].detach().numpy()[[0, 2]]
+        x = np.array([ax.get_xlim()])
+        y = np.hstack((np.ones_like(x.T), x.T)) @ b
+
+        ax.plot(x.flatten(), y.flatten(), 'k', alpha=.5, lw=1)
+
+
+class PerpLineProblem(LineProblem):
+    def objective(self, x):
+        src, x, y, b = self._reg(x, is_noisy=False)
+        if np.random.randint(2) == 0:
+            # calculate perpendicular line at origin
+            b[1] = -1 / b[1]
+        # estimate regressionline
+        y_ = x @ b
+        # calculate residual error
+        e = y - y_
+        # calculate dist between first and last
+        d = torch.norm(src[:2] - src[-2:])
+        # minimize error and maximize dist
+        loss = e.T @ e - d / self.n
+
+        src.retain_grad()
+        loss.backward()
+        return loss.detach().numpy(), src.grad.numpy()
+
+    def draw(self, x, ax):
+        # only use b, convert to numpy
+        b = self._reg(x, False)[3].detach().numpy()
+
+        x = np.array([ax.get_xlim()])
+        _x = np.hstack((np.ones_like(x.T), x.T))
+
+        ax.plot(x.flatten(), (_x @ b).flatten(), 'k', alpha=.5, lw=1)
+        b[1] = -1 / b[1]
+        ax.plot(x.flatten(), (_x @ b).flatten(), 'k:', alpha=.5, lw=1)
 
 
 class CircleProblem(Problem):
@@ -113,3 +161,16 @@ class CircleProblem(Problem):
         src.retain_grad()
         loss.backward()
         return loss.detach().numpy(), src.grad.numpy()
+
+    def draw(self, x, ax):
+        """
+        The drawn circle might look undersized, but this is not true. The agents force outside in order to maximize area.
+        Only the constraint is holding them on the circle. Therefore, with a growing penalty term, the agents will eventually line up directly on the circle.
+        :param x:
+        :param ax:
+        :return:
+        """
+        xy = x.reshape((-1, 2)).mean(axis=0)
+        # radius of a n-sided regular polygon
+        circ = Circle(xy, self.ideal_dist / (2 * np.sin(np.pi / self.n)), fill=False)
+        ax.add_patch(circ)
