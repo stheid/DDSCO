@@ -56,7 +56,7 @@ class Controller:
 
     @property
     def lr(self):
-        return 1 / (self.i + 5000)
+        return 4 / (self.i + 20000)
         # return 3e-3
 
     @property

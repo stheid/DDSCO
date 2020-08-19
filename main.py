@@ -26,7 +26,8 @@ if __name__ == '__main__':
             # x = ctrl.reset(np.array([0., 0., .1, 0., .1, .1, .2, .1]))
             x = ctrl.reset()
         else:
-            x = ctrl.step()
+            for i in range(100):
+                x = ctrl.step()
         logger.info(x)
         ax.clear()
         ax.set_title(ctrl.link_quality)
@@ -35,12 +36,12 @@ if __name__ == '__main__':
         ax.autoscale(False)
         ctrl.problem.draw(x, ax)
         for agent in ctrl.agents:
-            ax.annotate(':'.join([f'{int(c):d}' for c in i - agent.counters]), agent.pos, fontsize=8)
+            ax.annotate(':'.join([f'{int(c):d}' for c in i * 100 - agent.counters]), agent.pos, fontsize=8)
         return ax,
 
 
-    ani = FuncAnimation(fig, animate, 50000, interval=10, repeat=False)
-    # ani.save(f'vid/perp-zigzaginit{ctrl.link_quality}.mp4')
-    plt.show()
+    ani = FuncAnimation(fig, animate, 5000000, interval=10, repeat=False)
+    ani.save(f'vid/perp-randinit-fast{ctrl.link_quality}.mp4')
+    # plt.show()
 
 # ffmpeg -i circle\[0\,2\].mp4 -i circle\[0\,1.1\].mp4 -filter_complex hstack output.mp4
