@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
 
     ani = FuncAnimation(fig, animate, 50000, interval=10, repeat=False)
-    ani.save(f'perp-zigzaginit{ctrl.link_quality}.mp4')
-    # plt.show()
+    # ani.save(f'vid/perp-zigzaginit{ctrl.link_quality}.mp4')
+    plt.show()
 
 # ffmpeg -i circle\[0\,2\].mp4 -i circle\[0\,1.1\].mp4 -filter_complex hstack output.mp4
