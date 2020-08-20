@@ -1,3 +1,3 @@
-from .base import Controller
+from .base import Controller, LocalObjCtrl
 
-__all__ = ['Controller']
+__all__ = ['Controller', 'LocalObjCtrl']

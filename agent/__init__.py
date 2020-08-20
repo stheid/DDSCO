@@ -1,3 +1,3 @@
-from .base import Agent
+from .base import Agent, LocalObjAgent
 
-__all__ = ['Agent']
+__all__ = ['Agent', 'LocalObjAgent']

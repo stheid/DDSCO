@@ -4,9 +4,6 @@ import torch
 from matplotlib.patches import Circle
 from torch.distributions import normal
 
-torch.manual_seed(1)
-np.random.seed(1)
-
 
 class Problem:
     def __init__(self, n, ideal_dist):
@@ -174,3 +171,15 @@ class CircleProblem(Problem):
         # radius of a n-sided regular polygon
         circ = Circle(xy, self.ideal_dist / (2 * np.sin(np.pi / self.n)), fill=False)
         ax.add_patch(circ)
+
+
+class LocalObjectiveSharedX(Problem):
+    def objective(self, x, min) -> Tuple[float, np.array]:
+        src = torch.tensor(x, dtype=torch.double, requires_grad=True)
+        min = torch.tensor(min, dtype=torch.double)
+
+        loss = (src - min).pow(2).sum()
+
+        src.retain_grad()
+        loss.backward()
+        return loss.detach().numpy(), src.grad.numpy()

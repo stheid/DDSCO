@@ -1,6 +1,7 @@
 import logging
 
-from agent import Agent
+from agent.base import Agent
+from agent.base import LocalObjAgent
 import numpy as np
 
 logger = logging.getLogger(__name__)
@@ -64,3 +65,12 @@ class Controller:
         # return 2  # + self.i / 20
         # return 2
         return 5 + (self.i / 10) ** .5
+
+
+class LocalObjCtrl(Controller):
+    def reset(self, x0=None):
+        if x0 is None:
+            x0 = np.tile(np.random.uniform(size=2), self.n)
+        self.i = 0
+        self.agents = [LocalObjAgent(i, x0, self) for i in range(self.n)]
+        return x0

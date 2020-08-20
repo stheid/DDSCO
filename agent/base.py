@@ -46,3 +46,31 @@ class Agent:
         self.x[np.repeat(mask, 2)] = x[np.repeat(mask, 2)]
         self.counters[mask] = cntrs[mask]
         logger.debug('%d: \t%s', self.idx, self.counters, self.x)
+
+
+class LocalObjAgent(Agent):
+    def __init__(self, idx, x0: np.array, ctl):
+        self.min = np.random.uniform(size=2)
+        super().__init__(idx, x0, ctl)
+        self.fj_grad = np.zeros(self.n * 2)
+        self.fj_grad[self.xmask] = self.ctl.problem.objective(self.pos, self.min)[1]
+
+    def step(self, i):
+        if self.is_tick(i):
+            # make gradient update
+            self.pos = np.mean(self.x - self.ctl.lr * self.fj_grad)
+            logger.debug('%dth grad update of agent %d: %s', i, self.idx, self.x)
+            self.fj_grad[self.xmask] = self.ctl.problem.objective(self.pos, self.min)[1]
+            self.counters[self.idx] = i
+            for i in [-1, 1]:
+                to = self.idx + i
+                if 0 <= to < self.n:
+                    self.ctl.send(self.idx, to, (self.counters, self.x, self.fj_grad))
+
+    def msg(self, data):
+        cntrs, x, fj_grad = data
+        mask = self.counters < cntrs
+        self.x[np.repeat(mask, 2)] = x[np.repeat(mask, 2)]
+        self.fj_grad[np.repeat(mask, 2)] = fj_grad[np.repeat(mask, 2)]
+        self.counters[mask] = cntrs[mask]
+        logger.debug('%d: \t%s', self.idx, self.counters, self.x)
