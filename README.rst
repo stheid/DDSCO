@@ -9,17 +9,19 @@ Distributed Delayed Stochastic Constraint Optimization
 
 
 This code provides experimental results and a simple algorithm to solve distributed constrained optimization tasks.
+The experiment implemented here will simulate robot a robot swarm to arrange on a line or a circle.
+
+|line|
+
+.. |line| image:: results/line.gif
+    :target: results/line.mp4
+
 
 Overview
 --------
 - :code:`scripts` contain usage files
 - :code:`ddsco` contains the implementation
 - :code:`results` contains experimental results
-
-|vid|
-
-.. |vid| image:: line.gif
-    :target: line.mp4
 
 Installation
 ------------
