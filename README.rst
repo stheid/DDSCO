@@ -33,8 +33,6 @@ Installation
 **Disclaimer**: The code probably doesn't run without modifications on Windows.
 It should work on any standard Linux distribution.
 
-Simple
-^^^^^^
 * Install Python package::
 
   $ pip install .
