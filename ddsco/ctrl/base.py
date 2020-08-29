@@ -1,8 +1,10 @@
 import logging
 
-from agent.base import Agent
-from agent.base import LocalObjAgent
 import numpy as np
+
+from ddsco.agent import Agent
+
+from ddsco.agent import LocalObjAgent
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +59,14 @@ class Controller:
 
     @property
     def lr(self):
-        return 4 / (self.i + 20000)
+        return 10 / (self.i + 20000)
         # return 3e-3
 
     @property
     def beta(self):
         # return 2  # + self.i / 20
         # return 2
-        return 5 + (self.i / 10) ** .5
+        return 1 + (self.i / 100) ** .5
 
 
 class LocalObjCtrl(Controller):
