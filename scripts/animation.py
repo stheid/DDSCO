@@ -25,6 +25,8 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.set_aspect('equal', 'box')
+    ax.get_xaxis().set_visible(False)
+    ax.get_yaxis().set_visible(False)
 
 
     def animate(i, speedup=100):
@@ -39,7 +41,7 @@ if __name__ == '__main__':
         # ax.set_title(ctrl.link_quality)
         ax.plot(x[0::2].tolist(), x[1::2].tolist(), ':o')
         for agent in ctrl.agents:
-            ax.annotate(':'.join([f'{int(c):d}' for c in (i * speedup) - agent.counters]), agent.pos, fontsize=8)
+            # ax.annotate(':'.join([f'{int(c):d}' for c in (i * speedup) - agent.counters]), agent.pos, fontsize=8)
             if hasattr(agent, 'min'):
                 ax.plot(*agent.min, 'kx')
         ax.autoscale_view()
@@ -49,7 +51,7 @@ if __name__ == '__main__':
 
 
     ani = FuncAnimation(fig, animate, 500, interval=10, repeat=False)
-    ani.save(f'../results/circ-fast{ctrl.link_quality}.mp4')
+    ani.save(f'../results/circ-fast{ctrl.link_quality}_nonumbers.mp4')
     # plt.show()
 
 # ffmpeg -i circle\[0\,2\].mp4 -i circle\[0\,1.1\].mp4 -filter_complex hstack output.mp4

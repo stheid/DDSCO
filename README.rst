@@ -37,3 +37,12 @@ It should work on any standard Linux distribution.
 
   $ pip install .
 
+Results
+-------
+|circ-changing_comm|
+
+The convergence speed is strongly effected by the quality of the communication channel.
+In the left video, the communication channel has higher transmission probabilities and hence the overall convergence is speed up.
+
+.. |circ-changing_comm| image:: results/circle-varying_proba.gif
+    :target: results/circle-package proba.mp4
