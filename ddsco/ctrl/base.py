@@ -55,17 +55,15 @@ class Controller:
 
         # linear function with maximum at .4C and minimum at 1.5C (thats the zero position, but its actually clipped)
         return np.random.uniform() < np.clip(
-            (self.link_quality[1] - dist / self.ideal_dist) / self.link_quality[1] - self.link_quality[0], .01, 1), dist
+            (self.link_quality[1] - dist / self.ideal_dist) / (self.link_quality[1] - self.link_quality[0]), .01,
+            1), dist
 
     @property
     def lr(self):
-        return 10 / (self.i + 20000)
-        # return 3e-3
+        return 100 / (self.i + 30000)
 
     @property
     def beta(self):
-        # return 2  # + self.i / 20
-        # return 2
         return 1 + (self.i / 100) ** .5
 
 

@@ -17,9 +17,9 @@ The objective functions have been implemented in torch_ such that automatic grad
 |line| |circ|
 
 .. |line| image:: results/line.gif
-    :target: results/line.mp4
+    :target: results/line.gif
 .. |circ| image:: results/circle.gif
-    :target: results/circle.mp4
+    :target: results/circle.gif
 
 
 Overview

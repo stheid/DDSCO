@@ -55,7 +55,7 @@ class LineProblem(Problem):
         # calculate dist between first and last
         d = torch.norm(src[:2] - src[-2:])
         # minimize error and maximize dist
-        loss = e.T @ e - d / self.n
+        loss = (e.T @ e / self.n ** 2) - (d / self.n)
 
         src.retain_grad()
         loss.backward()
@@ -63,7 +63,7 @@ class LineProblem(Problem):
 
     def penalty(self, x, i):
         """
-        distance to between neightbour must be a constant.
+        distance to between neighbour must be a constant.
         :param x:
         :param i:
         :return:
